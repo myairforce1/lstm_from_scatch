@@ -9,6 +9,7 @@ batch_size = 100
 
 device = t.device("cuda:0" if t.cuda.is_available() else "cpu")
 
+# initialize trainable weights
 kernel_f = t.randn(input_size, hidden_size, requires_grad=True, device=device)
 kernel_i = t.randn(input_size, hidden_size, requires_grad=True, device=device)
 kernel_o = t.randn(input_size, hidden_size, requires_grad=True, device=device)
@@ -68,10 +69,10 @@ for epc in range(n_epochs):
         inputs, labels = inputs.cuda(), labels.cuda()
         optimizer.zero_grad()
 
-        # hidden state和cell state对每一个sample要重新初始化
+        # Re-initialize hidden state and cell state for every sample
         state_h = t.zeros(size=(batch_size, hidden_size), device=device)
         state_c = t.zeros(size=(batch_size, hidden_size), device=device)
-        # 在时间轴上执行循环网络
+        # Recurrent execution along the time axis
         for ts in range(timestep):
             input_t = inputs[:, ts, :]
             f_t = t.sigmoid(t.matmul(input_t, kernel_f) + t.matmul(state_h,recurrent_kernel_f) + bias_f)
@@ -81,11 +82,10 @@ for epc in range(n_epochs):
             state_c = t.mul(state_c, f_t) + t.mul(c_t_hat, i_t)
             state_h = t.mul(t.tanh(state_c), o_t)
 
-        #全连接层
+        #Dense connection layer
         logits = t.matmul(state_h, dense_weight) + dense_bias
 
-        # logits.retain_grad()
-
+        # Loss calculation
         loss_func = nn.CrossEntropyLoss()
         loss = loss_func(logits, labels)
         loss.backward()
@@ -96,7 +96,7 @@ for epc in range(n_epochs):
         if batch_idx % 100 == 0:
             print("epoch=%2d, loss = %f" % (epc, loss))
 
-# 测试集推导结果
+# Inference for the testing set
 correct_count = 0
 total_count = 0
 for data in test_loader:
